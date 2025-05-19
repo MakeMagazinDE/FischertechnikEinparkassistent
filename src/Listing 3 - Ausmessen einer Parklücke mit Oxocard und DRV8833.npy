@@ -1,0 +1,73 @@
+const AIN1 = C_PIN_01           # AIN1 pin connected to IO01
+const AIN2 = C_PIN_02           # AIN2 pin connected to IO02
+const ENCODER = C_PIN_07        # motor encoder on IN07
+const MIN_DUTY_CYCLE = 0
+const MAX_DUTY_CYCLE = 4095
+
+const SERVO_CTRL = C_PIN_03     # servo control on IO03
+const MIN_SERVO_POS = 102
+const MAX_SERVO_POS = 512
+
+const SHARP =  C_PIN_06         # Sharp IR sensor on IN06
+
+const SLOW = 50
+const STRAIGHT = 0
+const SERVO_DELAY = 250
+const FORWARD = true
+
+initGPIO(AIN1, OUTPUT)
+initGPIO(AIN2, OUTPUT)
+initGPIO(SERVO_CTRL, OUTPUT)
+
+setPWMFrequency(50)             # default: 500 Hz
+background(0,0,0)
+textFont(FONT_ROBOTO_24)
+
+def findParkingSlot(depth)->int:
+    turn(STRAIGHT)
+    dutyCycle = map(SLOW, 0, 100, MIN_DUTY_CYCLE, MAX_DUTY_CYCLE)
+    writePWM(AIN1, 0)           # start motor
+    writePWM(AIN2, dutyCycle)
+    while readADC(SHARP, 25) > depth:
+        clear()                 # clear display
+        drawText(10, 10, "Depth: " + readADC(SHARP, 25))
+        update()                # output depth of slot on display
+    initPulseCounter(ENCODER)   # reset counter
+    distance = readADC(SHARP, 25)
+    while (distance < depth) or (distance > 1000):
+        clear()                 # clear display
+        distance = readADC(SHARP, 25)
+        drawText(10, 10, "Depth: " + distance)
+        drawText(10, 40, "Size: " + readPulseCounter(ENCODER) + " Impulses")
+        update()                # output size of parking slot on display
+    writePWM(AIN2, 0)           # turn motor off
+    return readPulseCounter(ENCODER)
+
+def turn(angle):
+    dutyCycle = map(angle, 90, -90, MIN_SERVO_POS, MAX_SERVO_POS)
+    writePWM(SERVO_CTRL, dutyCycle)
+    delay(SERVO_DELAY)
+
+def driveFixedLengthTrack(distance:int, speed:byte, forward:bool):
+    dutyCycle = map(speed, 0, 100, MIN_DUTY_CYCLE, MAX_DUTY_CYCLE)
+    initPulseCounter(ENCODER)   # reset counter
+    if forward:
+        writePWM(AIN1, 0)
+        writePWM(AIN2, dutyCycle)
+    else:
+        writePWM(AIN1, dutyCycle)
+        writePWM(AIN2, 0)
+    while readPulseCounter(ENCODER) <= distance:
+        clear()                 # clear display
+        drawText(10, 10, "Speed: " + speed)
+        if forward:
+            drawText(10, 40, "Direction: forward")
+        else:
+            drawText(10, 40, "Direction: backward")
+        drawText(10, 70, "Impulses: " + readPulseCounter(ENCODER))
+        update()                # output speed, direction and impulses on display
+    writePWM(AIN1, 0)           # turn motor off
+    writePWM(AIN2, 0)
+
+def onClick():
+    findParkingSlot(570)

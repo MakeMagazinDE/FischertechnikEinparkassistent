@@ -1,0 +1,17 @@
+const SHARP = C_PIN_06         # Sharp IR sensor on IN06
+
+maxvalue = 0
+print("Messung gestartet.")
+
+background(0,0,0)
+
+def onClick():
+    maxvalue = 0
+    print("Messung gestartet.")
+
+def onDraw():
+	value = readADC(SHARP, 25)
+    if value > maxvalue:
+        maxvalue = value
+        print("Messwert: " + value)
+
